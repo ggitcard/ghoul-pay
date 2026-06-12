@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>GHOUL SUPPLY — Card Payment</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg:        #0a0a0a;
+    --surface:   #111111;
+    --border:    #1e1e1e;
+    --red:       #e03030;
+    --red-dim:   #2a1010;
+    --white:     #f0f0f0;
+    --muted:     #555;
+    --success:   #2ecc71;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 40px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 28px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .skull {
+    width: 36px;
+    height: 36px;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand-name {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    color: var(--red);
+  }
+
+  .brand-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Sections ── */
+  .section {
+    padding: 24px 20px 0;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── Coin selector ── */
+  .coin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .coin-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .coin-btn.selected {
+    border-color: var(--red);
+    background: var(--red-dim);
+  }
+
+  .coin-icon { font-size: 22px; }
+
+  .coin-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .coin-network {
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ── Amount ── */
+  .amount-row {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .currency-badge {
+    padding: 0 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    height: 52px;
+    display: flex;
+    align-items: center;
+  }
+
+  .amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--white);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    padding: 0 14px;
+    height: 52px;
+  }
+
+  .amount-input::placeholder { color: var(--muted); }
+
+  /* ── Address box ── */
+  .address-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .address-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .address-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--white);
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  .address-value.loading {
+    color: var(--muted);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Info card ── */
+  .info-card {
+    background: var(--red-dim);
+    border: 1px solid var(--red);
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  .info-text {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ccc;
+  }
+
+  .info-text strong { color: var(--white); }
+
+  /* ── Steps ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--red);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .step-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #bbb;
+    padding-top: 3px;
+  }
+
+  .step-text strong { color: var(--white); }
+
+  /* ── CTA button ── */
+  .cta-wrap {
+    padding: 24px 20px 0;
+  }
+
+  .cta-btn {
+    width: 100%;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 17px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .cta-btn:active { transform: scale(0.98); opacity: 0.9; }
+  .cta-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 20px 0;
+  }
+
+  /* ── Rate badge ── */
+  .rate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .rate-badge span { color: var(--success); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="skull">👻</div>
+  <div class="brand">
+    <div class="brand-name">GHOUL SUPPLY</div>
+    <div class="brand-sub">Card Payment</div>
+  </div>
+</div>
+
+<!-- Step 1: Select coin -->
+<div class="section">
+  <div class="section-label">01 — Select coin</div>
+  <div class="coin-grid">
+    <div class="coin-btn selected" onclick="selectCoin('BTC', this)">
+      <div class="coin-icon">🟡</div>
+      <div class="coin-name">BTC</div>
+      <div class="coin-network">Bitcoin</div>
+    </div>
+    <div class="coin-btn" onclick="selectCoin('LTC', this)">
+      <div class="coin-icon">🔵</div>
+      <div class="coin-name">LTC</div>
+      <div class="coin-network">Litecoin</div>
+    </div>
+    <div class="coin-btn" onclick="selectCoin('TRX', this)">
+      <div class="coin-icon">🔴</div>
+      <div class="coin-name">TRX</div>
+      <div class="coin-network">Tron</div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2: Amount -->
+<div class="section">
+  <div class="section-label">02 — Enter amount (EUR)</div>
+  <div class="amount-row">
+    <div class="currency-badge">€</div>
+    <input class="amount-input" id="amountInput" type="number" placeholder="50" min="10" max="5000" value="">
+  </div>
+  <div class="rate-badge" id="rateBadge">
+    <span id="rateValue">—</span> <span id="rateCoin">BTC</span> per €1
+  </div>
+</div>
+
+<!-- Step 3: Deposit address -->
+<div class="section">
+  <div class="section-label">03 — Your deposit address</div>
+  <div class="address-box">
+    <div class="address-label" id="addrLabel">BTC ADDRESS</div>
+    <div class="address-value loading" id="addrValue">Loading address...</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- How it works -->
+<div class="section">
+  <div class="section-label">How it works</div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Tap <strong>Buy with Card</strong> — Mercuryo opens</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Pay with <strong>Apple Pay, Google Pay or card</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Mercuryo sends crypto <strong>directly to your deposit address</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Bot detects payment — <strong>balance credited automatically</strong></div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 16px;">
+  <div class="info-card">
+    <div class="info-icon">⚠️</div>
+    <div class="info-text">
+      After buying, <strong>return to the bot</strong> and tap <strong>✅ I've Sent Payment</strong> to trigger the balance check.
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-wrap">
+  <button class="cta-btn" id="payBtn" onclick="openMercuryo()" disabled>
+    💳 Buy with Card
+  </button>
+</div>
+
+<script>
+  // Init Telegram WebApp
+  const tg = window.Telegram.WebApp;
+  tg.expand();
+  tg.setHeaderColor('#0a0a0a');
+  tg.setBackgroundColor('#0a0a0a');
+
+  let selectedCoin = 'BTC';
+  let addresses = {};
+  let rates = {};
+
+  // Get addresses and rates from URL params (passed by bot)
+  const params = new URLSearchParams(window.location.search);
+  const btcAddr = params.get('btc') || '';
+  const ltcAddr = params.get('ltc') || '';
+  const trxAddr = params.get('trx') || '';
+
+  if (btcAddr) addresses['BTC'] = btcAddr;
+  if (ltcAddr) addresses['LTC'] = ltcAddr;
+  if (trxAddr) addresses['TRX'] = trxAddr;
+
+  // Display address
+  function updateAddress() {
+    const addr = addresses[selectedCoin];
+    const el = document.getElementById('addrValue');
+    const label = document.getElementById('addrLabel');
+    label.textContent = selectedCoin + ' ADDRESS';
+    if (addr) {
+      el.textContent = addr;
+      el.classList.remove('loading');
+    } else {
+      el.textContent = 'Address not available';
+      el.classList.add('loading');
+    }
+    updateBtn();
+  }
+
+  // Fetch live rate from Mercuryo
+  async function fetchRate(coin) {
+    const coinMap = { BTC: 'btc', LTC: 'ltc', TRX: 'trx' };
+    try {
+      const res = await fetch(`https://apirone.com/api/v2/ticker?currency=${coinMap[coin]}&adjust-to=eur`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.currency === coinMap[coin]) {
+            rates[coin] = parseFloat(item.rate);
+          }
+        }
+      }
+    } catch(e) {}
+    updateRateBadge();
+  }
+
+  function updateRateBadge() {
+    const rate = rates[selectedCoin];
+    const badge = document.getElementById('rateValue');
+    const coinEl = document.getElementById('rateCoin');
+    coinEl.textContent = selectedCoin;
+    if (rate && rate > 0) {
+      const perEuro = (1 / rate).toFixed(6);
+      badge.textContent = perEuro;
+    } else {
+      badge.textContent = '—';
+    }
+  }
+
+  function selectCoin(coin, el) {
+    document.querySelectorAll('.coin-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCoin = coin;
+    updateAddress();
+    fetchRate(coin);
+  }
+
+  function updateBtn() {
+    const btn = document.getElementById('payBtn');
+    const amount = document.getElementById('amountInput').value;
+    const addr = addresses[selectedCoin];
+    btn.disabled = !addr || !amount || parseFloat(amount) < 10;
+  }
+
+  document.getElementById('amountInput').addEventListener('input', updateBtn);
+
+  function openMercuryo() {
+    const addr = addresses[selectedCoin];
+    const amount = document.getElementById('amountInput').value || '50';
+    if (!addr) return;
+
+    const coinMap = { BTC: 'BTC', LTC: 'LTC', TRX: 'TRX' };
+    const currency = coinMap[selectedCoin];
+
+    const url = `https://exchange.mercuryo.io/?currency=${currency}&fiat_currency=EUR&fiat_amount=${amount}&address=${encodeURIComponent(addr)}&fix_currency=true&fix_fiat_currency=true`;
+
+    tg.openLink(url);
+
+    // Notify bot that user is paying
+    tg.sendData(JSON.stringify({
+      action: 'card_payment_started',
+      coin: selectedCoin,
+      address: addr,
+      amount: amount
+    }));
+  }
+
+  // Init
+  updateAddress();
+  fetchRate('BTC');
+</script>
+</body>
+</html>
